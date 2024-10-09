@@ -222,6 +222,9 @@ if __name__ == "__main__":
     parser.add_argument("--compile", type=int, default=0, help="torch.compile the model")
     parser.add_argument("--flash", type=int, default=1, help="use flash attention")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="float32|float16|bfloat16")
+    # huggingface hub
+    parser.add_argument("--hf_load", type=int, default=0, help="load model weights from huggingface hub")
+    parser.add_argument("--hf_save", type=int, default=0, help="save pretrained model in huggingface hub format")
     # mixnmatch params
 
     args = parser.parse_args()
@@ -313,8 +316,18 @@ if __name__ == "__main__":
     }[args.model]
     model = MatMambaLMHeadModel(model_config)
 
-    # load model weights if provided
-    if args.model_path:
+    hf_str = {
+        "130m": "scaledfoundations/MatMamba-LM-130M-FineWeb",
+        "370m": "scaledfoundations/MatMamba-LM-370M-FineWeb",
+        "790m": "scaledfoundations/MatMamba-LM-790M-FineWeb",
+        "1.4b": "scaledfoundations/MatMamba-LM-1.4B-FineWeb",
+    }
+
+    # load model weights
+    if args.hf_load:
+        # Load weights from Huggingface
+        model = model.from_pretrained(hf_str[args.model])
+    elif args.model_path:
         # Load weights from DDP checkpoint
         model_weights = args.model_path
         print0("Loading model weights from:", model_weights)
@@ -323,7 +336,6 @@ if __name__ == "__main__":
         model.load_state_dict(state_dict)
         print0(f"loaded model weights from {args.model_path}")
 
-    # model.train()
     model.to(device)
     if args.compile:
         if hasattr(config, "coordinate_descent_tuning"):
@@ -357,9 +369,14 @@ if __name__ == "__main__":
     y_mixnmatch = []
     x_mixnmatch = []
 
-    sampling_strategy = "constant"
+    sampling_strategy = "single"
 
-    if sampling_strategy == "custom":
+    if sampling_strategy == "single":
+        mixnmatch_dims = [d_model for _ in range(n_layers)]
+        y, x, _ = val_ddp(model, mixnmatch_dims, val_loader, model_config, debug=False)
+        y_matmamba.append(y)
+        x_matmamba.append(x)
+    elif sampling_strategy == "custom":
         mixnmatch_dims = [d_model for _ in range(n_layers)]
         for idx in range(n_layers):
             mixnmatch_dims[idx] -= d_head*idx
@@ -385,13 +402,10 @@ if __name__ == "__main__":
     else:
         dim1, dim2 = 2048, 256
         dims = [dim1 for _ in range(n_layers)]
-        # dims = [96, 192, 384, 768]
-        # dims = [256, 512, 1024, 2048]
         idx = 0
         for dim in dims:
             idx += 1
             mixnmatch_dims = [dim for _ in range(n_layers)]
-            # mixnmatch_dims[len(mixnmatch_dims)*0:] = [random.choice([dim]) for _ in range(len(mixnmatch_dims))]
             mixnmatch_dims[-idx:] = [random.choice([dim2]) for _ in range(len(mixnmatch_dims))][-idx:]
             print0(mixnmatch_dims)
             y, x, _ = val_ddp(model, mixnmatch_dims, val_loader, model_config, debug=False)
@@ -407,6 +421,16 @@ if __name__ == "__main__":
     print0("x_matmamba =", x_matmamba)
     print0("y_mixnmatch =", y_mixnmatch)
     print0("x_mixnmatch =", x_mixnmatch)
+
+    if args.hf_save:
+        # Save on rank 0
+        if ddp_rank == 0:
+            model.module.save_pretrained(hf_str[args.model].replace("scaledfoundations/", ""))
+            print0(f"saved model weights to {hf_str[args.model]}")
+
+    # barrier to ensure all processes finish
+    if ddp:
+        dist.barrier()
 
     # clean up nice
     if ddp:

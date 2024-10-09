@@ -413,13 +413,6 @@ if __name__ == '__main__':
 
     print(model)
 
-    # model = Mamba2(
-    #     d_model=768,
-    # ).cuda()
-    # model = torch.compile(model)
-    # y = model(torch.randn(2, 100, 768).cuda())
-
-    # exit()
     input_tensor = torch.rand(2, 3, 224, 224).cuda()
     output = model(input_tensor)
     print(output.shape)
