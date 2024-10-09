@@ -1,3 +1,5 @@
+# Copyright (c) 2024, Scaled Foundations Inc
+
 import os
 import math
 import glob

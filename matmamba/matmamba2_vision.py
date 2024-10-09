@@ -400,8 +400,8 @@ class MatMamba2Vision(nn.Module):
 if __name__ == '__main__':
 
     model = MatMamba2Vision(
-        d_model=768,
-        n_layer=4,
+        d_model=1024,
+        n_layer=20,
         d_intermediate=0,
         n_classes=1000,
         patch_size=16,
@@ -420,6 +420,6 @@ if __name__ == '__main__':
     # y = model(torch.randn(2, 100, 768).cuda())
 
     # exit()
-    input_tensor = torch.rand(8, 3, 224, 224).cuda()
+    input_tensor = torch.rand(2, 3, 224, 224).cuda()
     output = model(input_tensor)
     print(output.shape)

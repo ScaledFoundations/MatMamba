@@ -1,8 +1,5 @@
-"""
-
-Based on https://github.com/karpathy/llm.c/blob/master/train_gpt2.py
-
-"""
+# Copyright (c) 2024, Scaled Foundations Inc
+# Based on https://github.com/karpathy/llm.c/blob/master/train_gpt2.py
 
 import os
 import math
@@ -24,7 +21,6 @@ import torch.distributed as dist
 
 # using a global to toggle flash-attention
 FLASH = 0
-
 
 # -----------------------------------------------------------------------------
 # Mamba stuff
