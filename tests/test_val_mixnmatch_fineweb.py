@@ -327,6 +327,7 @@ if __name__ == "__main__":
     if args.hf_load:
         # Load weights from Huggingface
         model = model.from_pretrained(hf_str[args.model])
+        print0(f"loaded model weights from {hf_str[args.model]}")
     elif args.model_path:
         # Load weights from DDP checkpoint
         model_weights = args.model_path
