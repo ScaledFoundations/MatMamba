@@ -64,6 +64,7 @@ matmamba_block.mixnmatch = False
 matmamba_block.mixnmatch_dims = matmamba_block.d_model
 
 ```
+Note that the first time you run the script, it may be slightly slow due to JIT / Triton auto-tuning per granularity. Subsequent calls will be faster.
 
 See [`matmamba/mamba2.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/matmamba/mamba2.py) for the implementation of the MatMamba2 block.
 

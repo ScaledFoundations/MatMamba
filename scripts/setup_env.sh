@@ -12,7 +12,7 @@ conda create -y -n matmamba python=3.9
 source ~/miniconda3/bin/activate matmamba
 
 # Install the mamba_ssm package
-pip install causal-conv1d
+pip install causal-conv1d einops
 git clone https://github.com/Abhinav95/mamba
 cd mamba
 pip install -e .
