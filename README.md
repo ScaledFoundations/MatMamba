@@ -13,10 +13,16 @@ MatMamba is a general sequence processing architecture based on [Mamba2](https:/
 For example, one could train a single 7B model (with the same weights) while explicitly optimizing nested submodels that are 3.5B, 1.75B, and 875M. Then, at inference time we could use a 7B model on a large GPU, an 875M model on a phone, and an interpolated 2.3B model with Mix'N'Match on a medium-sized GPU. We explictly train a few (in this case 4) submodels, but are able to get hundreds of nested submodels for free by Matryoshka style learning.
 
 ## Setup
-To install the `matmamba` package and set up a fresh conda environment with all necessary dependencies, run the following script:
+The requirements for MatMamba are almost the same as that of the [Mamba2 repository](https://github.com/state-spaces/mamba?tab=readme-ov-file#installation). To install the `matmamba` package and set up a fresh conda environment with all necessary dependencies, run the following script:
 
 ```bash
 bash scripts/setup_env.sh
+```
+
+And then:
+
+```bash
+conda activate matmamba
 ```
 
 ## Usage
