@@ -12,6 +12,11 @@ bash scripts/setup_env.sh
 
 ## Pretrained Models
 
+### MatMamba-Vision
+![MatMamba-Vision](assets/blog2.jpg)
+
+### MatMamba-LM
+
 ## Inference
 
 Coming soon.
