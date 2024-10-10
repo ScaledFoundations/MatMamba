@@ -2,16 +2,18 @@
 ![MatMamba](assets/blog1.jpg)
 
 ## About
-MatMamba is a general sequence processing architecture based on Mamba2. It introduces a nested Matryoshka structure in a Mamba2 block. We jointly train a few chosen granularities to get a single model from which we can flexibly extract a large number of nested submodels for adaptive inference based on the available deployment compute.
+MatMamba is a general sequence processing architecture based on [Mamba2](https://github.com/state-spaces/mamba). It introduces a nested [Matryoshka](https://arxiv.org/abs/2205.13147) structure in a Mamba2 block. We jointly train a few chosen granularities to get a single model from which we can flexibly extract a large number of nested submodels for adaptive inference based on the available deployment compute.
 
 ## Setup
-To install the matmamba package and set up a fresh conda environment with all necessary dependencies, run the following script:
+To install the `matmamba` package and set up a fresh conda environment with all necessary dependencies, run the following script:
 
 ```bash
 bash scripts/setup_env.sh
 ```
 
 ## Usage
+
+Like a Transformer and Mamba2, a MatMamba2 block takes in a tensor of shape `(batch_size, seq_len, d_model)` and returns a tensor of the same shape. Based on the available compute, we can use a specific number of dimensions (and heads) internally.
 
 ```python
 from matmamba import MatMamba2
@@ -50,7 +52,16 @@ matmamba_block.mixnmatch_dims = matmamba_block.d_model
 
 ## Pretrained Models
 
-You can find all pretrained models (MatMamba-Vision and MatMamba-LM) from the paper on Hugging Face: [MatMamba on Hugging Face](https://huggingface.co/collections/scaledfoundations/matmamba-670701480fa415dc2de60453)
+You can find all pretrained models (MatMamba-Vision and MatMamba-LM) from the paper on Hugging Face in the [MatMamba collection](https://huggingface.co/collections/scaledfoundations/matmamba-670701480fa415dc2de60453).
+
+| Model Name       | Training Dataset | d_model | Training Granularities | Link to Weights                                                                 |
+|------------------|------------------|---------|------------------------|---------------------------------------------------------------------------------|
+| MatMamba-Vision-35M  | ImageNet         | 512     | 512, 256, 128, 64                | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-35M-ImageNet/tree/main) |
+| MatMamba-Vision-135M  | ImageNet         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-670M-ImageNet/tree/main) |
+| MatMamba-LM-130M  | FineWeb         | 768     | 768, 384, 192, 96               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-130M-FineWeb/tree/main) |
+| MatMamba-LM-370M  | FineWeb         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-370M-FineWeb/tree/main) |
+| MatMamba-LM-790M | FineWeb         | 1536     | 1536, 768, 384, 192               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-790M-FineWeb/tree/main) |
+| MatMamba-LM-1.4B | FineWeb         | 2048     | 2048, 1024, 512, 256               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-1.4B-FineWeb/tree/main) |
 
 ### MatMamba-Vision
 ![MatMamba-Vision](assets/blog2.jpg)
