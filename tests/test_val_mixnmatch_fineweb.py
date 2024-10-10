@@ -1,3 +1,5 @@
+# Copyright (c) 2024, Scaled Foundations Inc
+
 import os
 import math
 import glob
@@ -326,7 +328,7 @@ if __name__ == "__main__":
     # load model weights
     if args.hf_load:
         # Load weights from Huggingface
-        model = model.from_pretrained(hf_str[args.model])
+        model = model.from_pretrained(hf_str[args.model]) # If this fails with a FileNotFoundError on the first run, run the command again
         print0(f"loaded model weights from {hf_str[args.model]}")
     elif args.model_path:
         # Load weights from DDP checkpoint

@@ -32,6 +32,30 @@ except ImportError:
 
 import timm
 from timm.layers import Mlp, PatchEmbed, DropPath
+from dataclasses import dataclass, field
+
+@dataclass
+class MatMamba2VisionConfig:
+    d_model: int
+    n_layer: int
+    d_intermediate: int = 0
+    n_classes: int = 1000
+    patch_size: int = 16
+    image_size: int = 224
+    ssm_cfg: Optional[dict] = field(default_factory=dict)
+    attn_layer_idx: Optional[list] = field(default_factory=list)
+    attn_cfg: Optional[dict] = field(default_factory=dict)
+    norm_epsilon: float = 1e-5
+    rms_norm: bool = False
+    initializer_cfg: Optional[dict] = field(default_factory=dict)
+    fused_add_norm: bool = False
+    residual_in_fp32: bool = False
+    drop_rate: float = 0.0
+    drop_path_rate: float = 0.0
+    proj_drop_rate: float = 0.0
+    pool: str = "cls"
+    device: Optional[torch.device] = None
+    dtype: Optional[torch.dtype] = None
 
 class Block(nn.Module):
     def __init__(
@@ -224,10 +248,11 @@ def _init_weights(
 class MatMamba2Vision(nn.Module):
     def __init__(
         self,
-        d_model: int,
-        n_layer: int,
-        d_intermediate: int,
-        n_classes: int,
+        config: MatMamba2VisionConfig = None,
+        d_model: int = 1024,
+        n_layer: int = 20,
+        d_intermediate: int = 0,
+        n_classes: int = 1000,
         patch_size: int = 16,
         image_size: int = 224,
         ssm_cfg=None,
@@ -244,6 +269,27 @@ class MatMamba2Vision(nn.Module):
         device=None,
         dtype=None,
     ) -> None:
+        self.config = config
+        if config is not None:
+            d_model = config.d_model
+            n_layer = config.n_layer
+            d_intermediate = config.d_intermediate
+            n_classes = config.n_classes
+            patch_size = config.patch_size
+            image_size = config.image_size
+            ssm_cfg = config.ssm_cfg
+            attn_layer_idx = config.attn_layer_idx
+            attn_cfg = config.attn_cfg
+            norm_epsilon = config.norm_epsilon
+            rms_norm = config.rms_norm
+            initializer_cfg = config.initializer_cfg
+            fused_add_norm = config.fused_add_norm
+            residual_in_fp32 = config.residual_in_fp32
+            drop_path_rate = config.drop_path_rate
+            proj_drop_rate = config.proj_drop_rate
+            pool = config.pool
+            device = config.device
+            dtype = config.dtype
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
         self.residual_in_fp32 = residual_in_fp32
@@ -348,6 +394,31 @@ class MatMamba2Vision(nn.Module):
 
         return hidden_states, residual
 
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name, device=None, dtype=None, **kwargs):
+        config_data = load_config_hf(pretrained_model_name)
+        config = MatMamba2VisionConfig(**config_data)
+        model = cls(config, device=device, dtype=dtype, **kwargs)
+        model.load_state_dict(load_state_dict_hf(pretrained_model_name, device=device, dtype=dtype))
+        return model
+
+    def save_pretrained(self, save_directory):
+        """
+        Minimal implementation of save_pretrained for MambaLMHeadModel.
+        Save the model and its configuration file to a directory.
+        """
+        # Ensure save_directory exists
+        os.makedirs(save_directory, exist_ok=True)
+
+        # Save the model's state_dict
+        model_path = os.path.join(save_directory, 'pytorch_model.bin')
+        torch.save(self.state_dict(), model_path)
+
+        # Save the configuration of the model
+        config_path = os.path.join(save_directory, 'config.json')
+        with open(config_path, 'w') as f:
+            json.dump(self.config.__dict__, f, indent=4)
+
     def forward(self, x, inference_params=None, return_features=False, **mixer_kwargs):
         hidden_states = self.patch_embed(x)
         hidden_states = self._pos_embed(hidden_states)
@@ -399,7 +470,7 @@ class MatMamba2Vision(nn.Module):
 
 if __name__ == '__main__':
 
-    model = MatMamba2Vision(
+    config = MatMamba2VisionConfig(
         d_model=1024,
         n_layer=20,
         d_intermediate=0,
@@ -407,7 +478,8 @@ if __name__ == '__main__':
         patch_size=16,
         drop_path_rate=0.1,
         proj_drop_rate=0.1,
-    ).cuda()
+    )
+    model = MatMamba2Vision(config).cuda()
 
     # model = timm.create_model('vit_base_patch16_224', pretrained=False).cuda()
 

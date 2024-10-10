@@ -1,3 +1,5 @@
+# Copyright (c) 2024, Scaled Foundations Inc
+
 import os
 import math
 import glob
@@ -114,13 +116,10 @@ def val_ddp(mixnmatch_dims, debug=False):
     parser = argparse.ArgumentParser()
     # file system input / output
     parser.add_argument("--input_val_bin", type=str, default="/mnt/raid/data/ffcvimagenet/val_500_0.0_100.ffcv", help="input validation set .ffcv file")
-    parser.add_argument("--model", type=str, default="matmamba2vision_base_patch16_224", help="The timm model to use")
+    parser.add_argument("--model", type=str, default="35m", help="The model to use")
     parser.add_argument("--model_path", type=str, default="", help="path to model weights to load (to finetune/continue training from)")
     parser.add_argument("--num_workers", type=int, default=12, help="number of data loader workers")
     parser.add_argument("--in_memory", type=int, default=1, help="cache the dataset in memory")
-    # model configuration
-    parser.add_argument("--d_model", type=int, default=768, help="model dimension")
-    parser.add_argument("--n_layers", type=int, default=24, help="number of layers")
     # token layout for each step of the optimization
     parser.add_argument("--image_size", type=int, default=224, help="image size (e.g. 224, 256, 384)")
     parser.add_argument("--batch_size", type=int, default=512, help="batch size per GPU, in units of #batch dimensions")
@@ -137,6 +136,9 @@ def val_ddp(mixnmatch_dims, debug=False):
     parser.add_argument("--dtype", type=str, default="bfloat16", help="float32|float16|bfloat16")
     parser.add_argument("--tensorcores", type=int, default=1, help="use tensorcores")
     parser.add_argument("--zero_stage", type=int, default=0, help="zero redundancy optimizer stage (0/1/2/3)")
+    # huggingface save and load args
+    parser.add_argument("--hf_load", type=int, default=0, help="load model weights from huggingface hub")
+    parser.add_argument("--hf_save", type=int, default=0, help="save pretrained model in huggingface hub format")
 
     args = parser.parse_args()
 
@@ -217,21 +219,57 @@ def val_ddp(mixnmatch_dims, debug=False):
     #     drop_path_rate=args.drop_path_rate,
     #     proj_drop_rate=args.proj_drop_rate
     # )
-    from matmamba.matmamba2_vision import MatMamba2Vision
+
     args.compile = 0
-    model = MatMamba2Vision(
-        d_model=args.d_model,
-        n_layer=args.n_layers,
-        d_intermediate=0,
-        n_classes=1000,
-        patch_size=args.patch_size,
-        drop_path_rate=0,
-        proj_drop_rate=0,
-    )
+    from matmamba.matmamba2_vision import MatMamba2Vision, MatMamba2VisionConfig
+
+    if args.model in ["35m", "135m"]:
+        config = {
+            "35m": MatMamba2VisionConfig(
+                n_layer=20,
+                d_model=512,
+                patch_size=args.patch_size,
+                drop_rate=0,
+                drop_path_rate=0,
+                proj_drop_rate=0,
+                n_classes=1000,
+            ),
+            "135m": MatMamba2VisionConfig(
+                n_layer=20,
+                d_model=1024,
+                patch_size=args.patch_size,
+                drop_rate=0,
+                drop_path_rate=0,
+                proj_drop_rate=0,
+                n_classes=1000,
+            ),
+        }[args.model]
+
+    else:
+        config = MatMamba2VisionConfig(
+            n_layer=args.n_layers,
+            d_model=args.d_model,
+            patch_size=args.patch_size,
+            drop_rate=args.drop_rate,
+            drop_path_rate=args.drop_path_rate,
+            proj_drop_rate=args.proj_drop_rate,
+            n_classes=1000,
+        )
+
+    model = MatMamba2Vision(config)
     print0(model)
 
+    hf_str = {
+        "35m": "scaledfoundations/MatMamba-Vision-35M-ImageNet",
+        "135m": "scaledfoundations/MatMamba-Vision-135M-ImageNet",
+    }[args.model]
+
     # load model weights if provided
-    if args.model_path:
+    if args.hf_load:
+        # Load weights from Huggingface
+        model = model.from_pretrained(hf_str)
+        print0(f"loaded model weights from {hf_str}")
+    elif args.model_path:
         # Load weights from DDP checkpoint
         model_weights = args.model_path
         print0("Loading model weights from:", model_weights)
@@ -248,7 +286,7 @@ def val_ddp(mixnmatch_dims, debug=False):
     mixnmatch_param_count = 0
     original_param_count = 0
     model_param_count = sum(p.numel() for p in model.parameters())
-    model_dim = args.d_model
+    model_dim = config.d_model
     embedding_params = sum(p.numel() for p in model.patch_embed.parameters())
     # param_dict = {pn: p for pn, p in model.named_parameters()}
     # print0(param_dict.keys())
@@ -359,6 +397,17 @@ def val_ddp(mixnmatch_dims, debug=False):
         print0(f"Non embedding parameters in chosen mixnmatch configuration: {mixnmatch_param_count:,}")
         print0(f"inference time: {inference_time}")
 
+    if args.hf_save:
+        # Save on rank 0
+        if ddp_rank == 0:
+            print0(f"saving model weights to {hf_str}")
+            model.module.save_pretrained(hf_str)
+            print0(f"saved model weights to {hf_str}")
+
+    # barrier to ensure all processes finish
+    if ddp:
+        dist.barrier()
+
     # -------------------------------------------------------------------------
     # clean up nice
     if ddp:
@@ -372,37 +421,36 @@ if __name__ == "__main__":
     d_model = 512
     n_layers = 20
 
-    # mixnmatch_dims = [
-    #     256, 256, 256, 256, 256,
-    #     256, 256, 256, 256, 256,
-    #     512, 512, 512, 512, 512,
-    #     512, 512, 512, 512, 512,
-    # ]
-    # y, x, _ = val_ddp(mixnmatch_dims, debug=False)
+    sampling_strategy = "single"
 
-    dim_tuples = [(d_model//8, d_model//4), (d_model//4, d_model//8), (d_model//2, d_model//4), (d_model//4, d_model//2), (d_model, d_model//2), (d_model//2, d_model)]
-    for dim1, dim2 in dim_tuples:
-        y_matmamba = []
-        x_matmamba = []
-        y_mixnmatch = []
-        x_mixnmatch = []
-        dims = [dim1 for _ in range(n_layers)]
-        idx = 0
-        for dim in dims:
-            idx += 1
-            mixnmatch_dims = [dim for _ in range(n_layers)]
-            # mixnmatch_dims[len(mixnmatch_dims)*0:] = [random.choice([dim]) for _ in range(len(mixnmatch_dims))]
-            mixnmatch_dims[-idx:] = [random.choice([dim2]) for _ in range(len(mixnmatch_dims))][-idx:]
-            y, x, _ = val_ddp(mixnmatch_dims, debug=False)
-            
-            if len(set(mixnmatch_dims)) == 1 and mixnmatch_dims[0] in [d_model//8, d_model//4, d_model//2, d_model]:
-                y_matmamba.append(y)
-                x_matmamba.append(x)
-            else:
-                y_mixnmatch.append(y)
-                x_mixnmatch.append(x)
+    if sampling_strategy == "single":
+        y, x, _ = val_ddp([d_model for _ in range(n_layers)], debug=False)
+        print("y =", y)
+        print("x =", x)
+    elif sampling_strategy == "dims":
+        dim_tuples = [(d_model//8, d_model//4), (d_model//4, d_model//8), (d_model//2, d_model//4), (d_model//4, d_model//2), (d_model, d_model//2), (d_model//2, d_model)]
+        for dim1, dim2 in dim_tuples:
+            y_matmamba = []
+            x_matmamba = []
+            y_mixnmatch = []
+            x_mixnmatch = []
+            dims = [dim1 for _ in range(n_layers)]
+            idx = 0
+            for dim in dims:
+                idx += 1
+                mixnmatch_dims = [dim for _ in range(n_layers)]
+                # mixnmatch_dims[len(mixnmatch_dims)*0:] = [random.choice([dim]) for _ in range(len(mixnmatch_dims))]
+                mixnmatch_dims[-idx:] = [random.choice([dim2]) for _ in range(len(mixnmatch_dims))][-idx:]
+                y, x, _ = val_ddp(mixnmatch_dims, debug=False)
+                
+                if len(set(mixnmatch_dims)) == 1 and mixnmatch_dims[0] in [d_model//8, d_model//4, d_model//2, d_model]:
+                    y_matmamba.append(y)
+                    x_matmamba.append(x)
+                else:
+                    y_mixnmatch.append(y)
+                    x_mixnmatch.append(x)
 
-        print("y_matmamba =", y_matmamba)
-        print("x_matmamba =", x_matmamba)
-        print("y_mixnmatch =", y_mixnmatch)
-        print("x_mixnmatch =", x_mixnmatch)
+            print("y_matmamba =", y_matmamba)
+            print("x_matmamba =", x_matmamba)
+            print("y_mixnmatch =", y_mixnmatch)
+            print("x_mixnmatch =", x_mixnmatch)
