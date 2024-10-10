@@ -2,7 +2,7 @@
 ![MatMamba](assets/blog1.jpg)
 
 ## About
-MatMamba is 
+MatMamba is a general sequence processing architecture based on Mamba2. It introduces a nested Matryoshka structure in a Mamba2 block. We jointly train a few chosen granularities to get a single model from which we can flexibly extract a large number of nested submodels for adaptive inference based on the available deployment compute.
 
 ## Setup
 To install the matmamba package and set up a fresh conda environment with all necessary dependencies, run the following script:
@@ -23,19 +23,19 @@ matmamba_block = MatMamba2(
 b, l, d = 8, 1024, 512
 x = torch.randn((b, l, d)).cuda()
 
-# Without any optional args like `mrl_level` or `mixnmatch_dims`, the block behaves like a regular Mamba2 block
+# Without any optional args/config, the block is a regular Mamba2 block
 y1 = matmamba_block(x)
 assert y1.shape == (b, l, d)
 
-# If we want to use a certain number of dimensions as a fraction of `d_model`, we can use the optional `mrl_level` argument. 
-# An `mrl_level` of 2 means that `d_model/2` dimensions will be used
+# If we want a number of dims as a fraction of `d_model`, we can use the `mrl_level` 
+# An `mrl_level` of 2 means that `d_model/2` dims will be used
 y2 = matmamba_block(x, mrl_level=2)
 
-# `y2` is also (b, l, d), but only half the dimensions are used in the internal computation of the block
+# `y2` is also (b, l, d), but only half the dims are used internally
 assert y2.shape == (b, l, d)
 
-# We can also manually specify the number of dimensions for each layer using its `mixnmatch_dims` parameter. 
-# For example, if we want to use exactly 64 dimensions:
+# We can also manually specify the number of dims for each layer using `mixnmatch_dims` 
+# For example, if we want to use exactly 64 dims:
 matmamba_block.mixnmatch = True
 matmamba_block.mixnmatch_dims = 64
 
