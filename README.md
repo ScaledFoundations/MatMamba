@@ -1,5 +1,5 @@
 # MatMamba
-Image showing MatMamba goes here
+![MatMamba](assets/blog1.jpg)
 
 ## Setup
 To install the matmamba package and set up a fresh conda environment with all necessary dependencies, run the following script:
