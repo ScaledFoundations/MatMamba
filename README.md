@@ -16,6 +16,7 @@ bash scripts/setup_env.sh
 Like a Transformer and Mamba2, a MatMamba2 block takes in a tensor of shape `(batch_size, seq_len, d_model)` and returns a tensor of the same shape. Based on the available compute, we can use a specific number of dimensions (and heads) internally.
 
 ```python
+import torch
 from matmamba import MatMamba2
 
 matmamba_block = MatMamba2(
@@ -50,23 +51,106 @@ matmamba_block.mixnmatch_dims = matmamba_block.d_model
 
 ```
 
+See `matmamba/mamba2.py` for the implementation of the MatMamba2 block.
+
+## Models
+In this work, we showed how to make a vision model (MatMamba-Vision) and a language model (MatMamba-LM) using the MatMamba block.
+
+### MatMamba-Vision
+![MatMamba-Vision](assets/blog2.jpg)
+
+This works very similar to a ViT. The transformer blocks are replaced by MatMamba blocks, and the [CLS] token is moved to a suffix due to the causal nature of Mamba2. We can attach a classification head for tasks like image classification on ImageNet, but it can also be used for any vision task.
+
+```python
+import torch
+from matmamba import MatMamba2Vision, MatMamba2VisionConfig
+
+config = MatMamba2VisionConfig(
+    d_model=1024,
+    n_layer=20,
+    d_intermediate=0,
+    n_classes=1000,
+    patch_size=16,
+    drop_path_rate=0.1,
+    proj_drop_rate=0.1,
+)
+model = MatMamba2Vision(config).cuda()
+
+x = torch.randn((8, 3, 224, 224)).cuda() # Dummy image batch
+
+y = model(x)
+assert y.shape == (8, 1000)
+
+# mrl_level and mixnmatch_dims can be used here as well
+y2 = model(x, mrl_level=2)
+assert y2.shape == (8, 1000)
+
+for layer in model.layers:
+    layer.mixer.mixnmatch = True
+    layer.mixer.mixnmatch_dims = 256
+
+y3 = model(x)
+assert y3.shape == (8, 1000)
+```
+
+You can also directly load a pretrained model using the `from_pretrained` method:
+
+```python
+model = model.from_pretrained("scaledfoundations/MatMamba-Vision-135M-ImageNet")
+```
+
+See `matmamba/matmamba2_vision.py` for the implementation of the vision backbone, and training code in `train_imagenet.py`.
+
+### MatMamba-LM
+We can also make a Causal Language Model using the MatMamba block.
+
+```python
+import torch
+from mamba_ssm.models.config_mamba import MambaConfig
+from matmamba import MatMambaLMHeadModel
+
+model = MatMambaLMHeadModel(MambaConfig(n_layer=24, d_model=768)).cuda()
+
+vocab_size = 50280
+b, l = 8, 1024
+# Dummy input batch of token ids, can come from any tokenizer
+x = torch.randint(0, vocab_size, (b, l)).cuda()
+
+y = model(x).logits
+assert y.shape == (b, l, vocab_size)
+
+# mrl_level and mixnmatch_dims can be used here as well
+y2 = model(x, mrl_level=2).logits
+assert y2.shape == (b, l, vocab_size)
+
+for layer in model.backbone.layers:
+    layer.mixer.mixnmatch = True
+    layer.mixer.mixnmatch_dims = 384
+
+y3 = model(x).logits
+assert y3.shape == (b, l, vocab_size)
+```
+
+You can also directly load a pretrained model using the `from_pretrained` method:
+
+```python
+model = model.from_pretrained("scaledfoundations/MatMamba-LM-1.4B-FineWeb")
+```
+
+See `matmamba/mixer_seq_simple.py` for the implementation of the language model backbone, and training code in `train_fineweb.py`.
+
 ## Pretrained Models
 
 You can find all pretrained models (MatMamba-Vision and MatMamba-LM) from the paper on Hugging Face in the [MatMamba collection](https://huggingface.co/collections/scaledfoundations/matmamba-670701480fa415dc2de60453).
 
 | Model Name       | Training Dataset | d_model | Training Granularities | Link to Weights                                                                 |
 |------------------|------------------|---------|------------------------|---------------------------------------------------------------------------------|
-| MatMamba-Vision-35M  | ImageNet         | 512     | 512, 256, 128, 64                | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-35M-ImageNet/tree/main) |
-| MatMamba-Vision-135M  | ImageNet         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-670M-ImageNet/tree/main) |
-| MatMamba-LM-130M  | FineWeb         | 768     | 768, 384, 192, 96               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-130M-FineWeb/tree/main) |
-| MatMamba-LM-370M  | FineWeb         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-370M-FineWeb/tree/main) |
-| MatMamba-LM-790M | FineWeb         | 1536     | 1536, 768, 384, 192               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-790M-FineWeb/tree/main) |
-| MatMamba-LM-1.4B | FineWeb         | 2048     | 2048, 1024, 512, 256               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-1.4B-FineWeb/tree/main) |
-
-### MatMamba-Vision
-![MatMamba-Vision](assets/blog2.jpg)
-
-### MatMamba-LM
+| `MatMamba-Vision-35M`  | ImageNet         | 512     | 512, 256, 128, 64                | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-35M-ImageNet/tree/main) |
+| `MatMamba-Vision-135M`  | ImageNet         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-Vision-670M-ImageNet/tree/main) |
+| `MatMamba-LM-130M`  | FineWeb         | 768     | 768, 384, 192, 96               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-130M-FineWeb/tree/main) |
+| `MatMamba-LM-370M`  | FineWeb         | 1024     | 1024, 512, 256, 128               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-370M-FineWeb/tree/main) |
+| `MatMamba-LM-790M` | FineWeb         | 1536     | 1536, 768, 384, 192               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-790M-FineWeb/tree/main) |
+| `MatMamba-LM-1.4B` | FineWeb         | 2048     | 2048, 1024, 512, 256               | [weights](https://huggingface.co/scaledfoundations/MatMamba-LM-1.4B-FineWeb/tree/main) |
 
 ## Citation
 
