@@ -2,7 +2,9 @@
 ![MatMamba](assets/blog1.jpg)
 
 **MatMamba: A Matryoshka State Space Model**
+
 Abhinav Shukla, Sai Vemprala, Aditya Kusupati, Ashish Kapoor
+
 [https://arxiv.org/abs/2410.06718](https://arxiv.org/abs/2410.06718)
 
 ## About
