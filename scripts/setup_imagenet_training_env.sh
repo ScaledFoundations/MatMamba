@@ -8,8 +8,17 @@ rm ~/miniconda3/miniconda.sh
 
 source ~/miniconda3/etc/profile.d/conda.sh
 
-conda create -y -n matmamba python=3.9
-source ~/miniconda3/bin/activate matmamba
+conda create -y -n matmambaimagenet python=3.9 cupy pkg-config compilers libjpeg-turbo opencv cudatoolkit numba -c pytorch -c conda-forge
+
+source ~/miniconda3/bin/activate matmambaimagenet
+
+# Install the ffcv package
+pip install Pillow
+git clone -b randaug https://github.com/Abhinav95/ffcv.git
+cd ffcv
+pip install -e .
+cd ..
+python -c "import ffcv"
 
 # Install the mamba_ssm package
 pip install causal-conv1d
