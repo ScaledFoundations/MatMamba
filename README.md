@@ -1,6 +1,10 @@
 # MatMamba
 ![MatMamba](assets/blog1.jpg)
 
+**MatMamba: A Matryoshka State Space Model**
+Abhinav Shukla, Sai Vemprala, Aditya Kusupati, Ashish Kapoor
+[https://arxiv.org/abs/2410.06718](https://arxiv.org/abs/2410.06718)
+
 ## About
 MatMamba is a general sequence processing architecture based on [Mamba2](https://github.com/state-spaces/mamba). It introduces a nested [Matryoshka](https://arxiv.org/abs/2205.13147) structure in a Mamba2 block. We jointly train a few chosen granularities to get a single model from which we can flexibly extract a large number of nested submodels for adaptive inference based on the available deployment compute.
 
@@ -51,10 +55,10 @@ matmamba_block.mixnmatch_dims = matmamba_block.d_model
 
 ```
 
-See `matmamba/mamba2.py` for the implementation of the MatMamba2 block.
+See [`matmamba/mamba2.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/matmamba/mamba2.py) for the implementation of the MatMamba2 block.
 
 ## Models
-In this work, we showed how to make a vision model (MatMamba-Vision) and a language model (MatMamba-LM) using the MatMamba block.
+We can make a vision model (MatMamba-Vision) and a language model (MatMamba-LM) using the MatMamba block.
 
 ### MatMamba-Vision
 ![MatMamba-Vision](assets/blog2.jpg)
@@ -99,7 +103,11 @@ You can also directly load a pretrained model using the `from_pretrained` method
 model = model.from_pretrained("scaledfoundations/MatMamba-Vision-135M-ImageNet")
 ```
 
-See `matmamba/matmamba2_vision.py` for the implementation of the vision backbone, and training code in `train_imagenet.py`.
+See [`matmamba/matmamba2_vision.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/matmamba/matmamba2_vision.py) for the implementation of the vision backbone, and training code in [`train_imagenet.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/train_imagenet.py).
+
+#### Data Preparation for ImageNet
+
+[coming soon]
 
 ### MatMamba-LM
 We can also make a Causal Language Model using the MatMamba block.
@@ -137,7 +145,11 @@ You can also directly load a pretrained model using the `from_pretrained` method
 model = model.from_pretrained("scaledfoundations/MatMamba-LM-1.4B-FineWeb")
 ```
 
-See `matmamba/mixer_seq_simple.py` for the implementation of the language model backbone, and training code in `train_fineweb.py`.
+See [`matmamba/mixer_seq_simple.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/matmamba/mixer_seq_simple.py) for the implementation of the language model backbone, and training code in [`train_fineweb.py`](https://github.com/ScaledFoundations/MatMamba/blob/main/train_fineweb.py).
+
+#### Data Preparation for FineWeb
+
+[coming soon]
 
 ## Pretrained Models
 
@@ -157,7 +169,7 @@ You can find all pretrained models (MatMamba-Vision and MatMamba-LM) from the pa
 If you use this code, or otherwise find our work valuable, please cite:
 
 ```
-@article{author2023matmamba,
+@article{shukla2024matmamba,
     title={MatMamba: A Matryoshka State Space Model},
     author={Shukla, Abhinav and Vemprala, Sai, and Kusupati, Aditya, and Kapoor, Ashish},
     journal={arXiv preprint arXiv:2410.06718},
