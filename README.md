@@ -10,7 +10,7 @@ Abhinav Shukla, Sai Vemprala, Aditya Kusupati, Ashish Kapoor
 ## About
 MatMamba is a general sequence processing architecture based on [Mamba2](https://github.com/state-spaces/mamba). It introduces a nested [Matryoshka](https://arxiv.org/abs/2205.13147) structure in a Mamba2 block. We jointly train a few chosen granularities to get a single model from which we can flexibly extract a large number of nested submodels for adaptive inference based on the available deployment compute.
 
-For example, one could train a single 7B model (with the same weights) while explicitly optimizing nested submodels that are 3.5B, 1.75B, and 875M. Then, at inference time we could use a 7B model on a large GPU, an 875M model on a phone, and an interpolated 2.3B model with Mix'N'Match on a medium-sized GPU. We explictly train a few (in this case 4) submodels, but are able to get hundreds of nested submodels for free by Matryoshka style learning.
+For example, one could train a single 7B model (with the same weights) while explicitly optimizing nested submodels that are 3.5B, 1.75B, and 875M. Then, at inference time we could use a 7B model on a large GPU, an 875M model on a phone, and an interpolated 2.3B model with Mix'N'Match on a medium-sized GPU. We explicitly train a few (in this case 4) submodels, but are able to get hundreds of nested submodels for free by Matryoshka style learning.
 
 ## Setup
 The requirements for MatMamba are almost the same as that of the [Mamba2 repository](https://github.com/state-spaces/mamba?tab=readme-ov-file#installation). To install the `matmamba` package and set up a fresh conda environment with all necessary dependencies, run the following script:
